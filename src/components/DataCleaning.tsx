@@ -9,7 +9,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { CheckCircle, AlertTriangle, Trash2, Sparkles } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import * as XLSX from 'xlsx';
-import { Document, Packer, Paragraph, Table as DocxTable, TableCell as DocxTableCell, TableRow as DocxTableRow, WidthType } from 'docx';
+import jsPDF from 'jspdf';
 import { saveAs } from 'file-saver';
 
 interface DataCleaningProps {
@@ -594,64 +594,63 @@ export const DataCleaning = ({ data, onDataCleaned }: DataCleaningProps) => {
     }
   };
 
-  const handleExportCleanedWord = async () => {
+  const handleExportCleanedPDF = () => {
     if (cleanedData.length === 0) return;
     
     try {
       const headers = Object.keys(cleanedData[0]);
       
-      const tableRows = [
-        new DocxTableRow({
-          children: headers.map(header => 
-            new DocxTableCell({
-              children: [new Paragraph({ text: header, bold: true })],
-              width: { size: 100 / headers.length, type: WidthType.PERCENTAGE }
-            })
-          )
-        }),
-        ...cleanedData.slice(0, 1000).map(row =>
-          new DocxTableRow({
-            children: headers.map(header => 
-              new DocxTableCell({
-                children: [new Paragraph({ text: String(row[header] || '') })],
-                width: { size: 100 / headers.length, type: WidthType.PERCENTAGE }
-              })
-            )
-          })
-        )
-      ];
-
-      const doc = new Document({
-        sections: [{
-          children: [
-            new Paragraph({
-              text: 'Cleaned Data Export',
-              heading: 'Heading1'
-            }),
-            new Paragraph({
-              text: `Exported on: ${new Date().toLocaleDateString()}`,
-              spacing: { after: 200 }
-            }),
-            new DocxTable({
-              rows: tableRows,
-              width: { size: 100, type: WidthType.PERCENTAGE }
-            })
-          ]
-        }]
+      // Create PDF
+      const pdf = new jsPDF();
+      
+      // Add title
+      pdf.setFontSize(16);
+      pdf.text('Cleaned Data Export', 20, 20);
+      
+      // Add export date
+      pdf.setFontSize(10);
+      pdf.text(`Exported on: ${new Date().toLocaleDateString()}`, 20, 30);
+      
+      // Add table headers
+      let yPosition = 50;
+      pdf.setFontSize(8);
+      pdf.setFont(undefined, 'bold');
+      
+      const columnWidth = 170 / headers.length;
+      headers.forEach((header, index) => {
+        pdf.text(String(header), 20 + (index * columnWidth), yPosition);
       });
-
-      const buffer = await Packer.toBuffer(doc);
-      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
-      saveAs(blob, 'cleaned_data_export.docx');
+      
+      // Add data rows
+      pdf.setFont(undefined, 'normal');
+      const maxRows = Math.min(cleanedData.length, 100);
+      
+      for (let i = 0; i < maxRows; i++) {
+        yPosition += 10;
+        
+        if (yPosition > 280) {
+          pdf.addPage();
+          yPosition = 20;
+        }
+        
+        const row = cleanedData[i];
+        headers.forEach((header, index) => {
+          const cellValue = String(row[header] || '');
+          const truncatedValue = cellValue.length > 15 ? cellValue.substring(0, 12) + '...' : cellValue;
+          pdf.text(truncatedValue, 20 + (index * columnWidth), yPosition);
+        });
+      }
+      
+      pdf.save('cleaned_data_export.pdf');
       
       toast({
-        title: "Word Export Complete",
-        description: `${Math.min(cleanedData.length, 1000)} cleaned rows exported to Word document.`,
+        title: "PDF Export Complete",
+        description: `${Math.min(cleanedData.length, 100)} cleaned rows exported to PDF file.`,
       });
     } catch (error) {
       toast({
         title: "Export Failed",
-        description: "Failed to export to Word format.",
+        description: "Failed to export to PDF format.",
         variant: "destructive"
       });
     }
@@ -868,8 +867,8 @@ export const DataCleaning = ({ data, onDataCleaned }: DataCleaningProps) => {
                       <DropdownMenuItem onClick={handleExportCleanedExcel}>
                         Export as Excel
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={handleExportCleanedWord}>
-                        Export as Word
+                      <DropdownMenuItem onClick={handleExportCleanedPDF}>
+                        Export as PDF
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={handleExportCleanedTXT}>
                         Export as TXT

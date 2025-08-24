@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
 import { Search, Filter, Download, TrendingUp, ChevronDown } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import { Document, Packer, Paragraph, Table as DocxTable, TableCell as DocxTableCell, TableRow as DocxTableRow, WidthType } from 'docx';
+import jsPDF from 'jspdf';
 import { saveAs } from 'file-saver';
 
 interface DataTableProps {
@@ -158,67 +158,66 @@ export const DataTable = ({ data, filename, type }: DataTableProps) => {
     }
   };
 
-  const handleExportWord = async () => {
+  const handleExportPDF = () => {
     if (data.length === 0) return;
     
     try {
       const headers = Object.keys(data[0]);
       
-      // Create table rows
-      const tableRows = [
-        // Header row
-        new DocxTableRow({
-          children: headers.map(header => 
-            new DocxTableCell({
-              children: [new Paragraph({ text: header, bold: true })],
-              width: { size: 100 / headers.length, type: WidthType.PERCENTAGE }
-            })
-          )
-        }),
-        // Data rows
-        ...data.slice(0, 1000).map(row => // Limit to 1000 rows for performance
-          new DocxTableRow({
-            children: headers.map(header => 
-              new DocxTableCell({
-                children: [new Paragraph({ text: String(row[header] || '') })],
-                width: { size: 100 / headers.length, type: WidthType.PERCENTAGE }
-              })
-            )
-          })
-        )
-      ];
-
-      const doc = new Document({
-        sections: [{
-          children: [
-            new Paragraph({
-              text: `Data Export: ${filename}`,
-              heading: 'Heading1'
-            }),
-            new Paragraph({
-              text: `Exported on: ${new Date().toLocaleDateString()}`,
-              spacing: { after: 200 }
-            }),
-            new DocxTable({
-              rows: tableRows,
-              width: { size: 100, type: WidthType.PERCENTAGE }
-            })
-          ]
-        }]
+      // Create PDF
+      const pdf = new jsPDF();
+      
+      // Add title
+      pdf.setFontSize(16);
+      pdf.text(`Data Export: ${filename}`, 20, 20);
+      
+      // Add export date
+      pdf.setFontSize(10);
+      pdf.text(`Exported on: ${new Date().toLocaleDateString()}`, 20, 30);
+      
+      // Add table headers
+      let yPosition = 50;
+      pdf.setFontSize(8);
+      pdf.setFont(undefined, 'bold');
+      
+      const columnWidth = 170 / headers.length; // Distribute columns across page width
+      headers.forEach((header, index) => {
+        pdf.text(String(header), 20 + (index * columnWidth), yPosition);
       });
-
-      const buffer = await Packer.toBuffer(doc);
-      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
-      saveAs(blob, `${filename.replace(/\.[^/.]+$/, '')}_export.docx`);
+      
+      // Add data rows (limit to prevent performance issues)
+      pdf.setFont(undefined, 'normal');
+      const maxRows = Math.min(data.length, 100); // Limit to 100 rows for PDF
+      
+      for (let i = 0; i < maxRows; i++) {
+        yPosition += 10;
+        
+        // Check if we need a new page
+        if (yPosition > 280) {
+          pdf.addPage();
+          yPosition = 20;
+        }
+        
+        const row = data[i];
+        headers.forEach((header, index) => {
+          const cellValue = String(row[header] || '');
+          // Truncate long values to fit in cell
+          const truncatedValue = cellValue.length > 15 ? cellValue.substring(0, 12) + '...' : cellValue;
+          pdf.text(truncatedValue, 20 + (index * columnWidth), yPosition);
+        });
+      }
+      
+      // Save the PDF
+      pdf.save(`${filename.replace(/\.[^/.]+$/, '')}_export.pdf`);
       
       toast({
-        title: "Word Export Complete",
-        description: `${Math.min(data.length, 1000)} rows exported to Word document.`,
+        title: "PDF Export Complete",
+        description: `${Math.min(data.length, 100)} rows exported to PDF file.`,
       });
     } catch (error) {
       toast({
         title: "Export Failed",
-        description: "Failed to export to Word format.",
+        description: "Failed to export to PDF format.",
         variant: "destructive"
       });
     }
@@ -299,9 +298,9 @@ export const DataTable = ({ data, filename, type }: DataTableProps) => {
                 <Download className="h-4 w-4 mr-2" />
                 Export as Excel
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleExportWord}>
+              <DropdownMenuItem onClick={handleExportPDF}>
                 <Download className="h-4 w-4 mr-2" />
-                Export as Word
+                Export as PDF
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleExportTXT}>
                 <Download className="h-4 w-4 mr-2" />

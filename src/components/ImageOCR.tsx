@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
-import { Document, Packer, Paragraph } from 'docx';
+import jsPDF from 'jspdf';
 import { saveAs } from 'file-saver';
 import Tesseract from 'tesseract.js';
 
@@ -233,40 +233,44 @@ export const ImageOCR = ({ imageFile, onTextExtracted }: ImageOCRProps) => {
     URL.revokeObjectURL(url);
   };
 
-  const downloadTextAsWord = async () => {
+  const downloadTextAsPDF = () => {
     if (!extractedText) return;
     
     try {
-      const doc = new Document({
-        sections: [{
-          children: [
-            new Paragraph({
-              text: `OCR Text Extraction: ${imageFile?.name || 'image'}`,
-              heading: 'Heading1'
-            }),
-            new Paragraph({
-              text: `Extracted on: ${new Date().toLocaleDateString()}`,
-              spacing: { after: 200 }
-            }),
-            ...extractedText.split('\n').map(line => 
-              new Paragraph({ text: line || ' ' })
-            )
-          ]
-        }]
+      const pdf = new jsPDF();
+      
+      // Add title
+      pdf.setFontSize(16);
+      pdf.text(`OCR Text Extraction: ${imageFile?.name || 'image'}`, 20, 20);
+      
+      // Add extraction date
+      pdf.setFontSize(10);
+      pdf.text(`Extracted on: ${new Date().toLocaleDateString()}`, 20, 30);
+      
+      // Add extracted text
+      pdf.setFontSize(12);
+      const lines = extractedText.split('\n');
+      let yPosition = 50;
+      
+      lines.forEach(line => {
+        if (yPosition > 280) {
+          pdf.addPage();
+          yPosition = 20;
+        }
+        pdf.text(line || ' ', 20, yPosition);
+        yPosition += 10;
       });
-
-      const buffer = await Packer.toBuffer(doc);
-      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
-      saveAs(blob, `extracted_text_${imageFile?.name || 'image'}.docx`);
+      
+      pdf.save(`extracted_text_${imageFile?.name || 'image'}.pdf`);
       
       toast({
-        title: "Word Export Complete",
-        description: "Extracted text exported to Word document.",
+        title: "PDF Export Complete",
+        description: "Extracted text exported to PDF file.",
       });
     } catch (error) {
       toast({
         title: "Export Failed",
-        description: "Failed to export to Word format.",
+        description: "Failed to export to PDF format.",
         variant: "destructive"
       });
     }
@@ -368,9 +372,9 @@ export const ImageOCR = ({ imageFile, onTextExtracted }: ImageOCRProps) => {
                     <Download className="h-4 w-4 mr-2" />
                     Download as TXT
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={downloadTextAsWord}>
+                  <DropdownMenuItem onClick={downloadTextAsPDF}>
                     <Download className="h-4 w-4 mr-2" />
-                    Download as Word
+                    Download as PDF
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={downloadTextAsCSV}>
                     <Download className="h-4 w-4 mr-2" />
