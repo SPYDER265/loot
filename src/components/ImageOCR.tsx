@@ -8,6 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import jsPDF from 'jspdf';
 import { saveAs } from 'file-saver';
 import Tesseract from 'tesseract.js';
+import { huggingFaceService } from '@/lib/huggingface';
 
 interface ImageOCRProps {
   imageFile: File | null;
@@ -19,6 +20,7 @@ export const ImageOCR = ({ imageFile, onTextExtracted }: ImageOCRProps) => {
   const [extractedText, setExtractedText] = useState('');
   const [progress, setProgress] = useState(0);
   const [imagePreview, setImagePreview] = useState<string>('');
+  const [isEnhancing, setIsEnhancing] = useState(false);
   const { toast } = useToast();
 
   // AI-enhanced text completion and correction
@@ -96,6 +98,47 @@ export const ImageOCR = ({ imageFile, onTextExtracted }: ImageOCRProps) => {
       const preview = URL.createObjectURL(imageFile);
       setImagePreview(preview);
 
+      // First, try AI-powered image analysis
+      toast({
+        title: "Starting AI Analysis",
+        description: "Using Hugging Face AI to analyze your image..."
+      });
+
+      const aiResult = await huggingFaceService.analyzeImageForOCR(imageFile);
+      
+      if (aiResult.success && aiResult.data) {
+        // AI extraction successful
+        setProgress(50);
+        setIsEnhancing(true);
+        
+        // Enhance the AI-extracted text
+        const enhancementResult = await huggingFaceService.enhanceOCRText(aiResult.data, `Image file: ${imageFile.name}`);
+        
+        const finalText = enhancementResult.success ? enhancementResult.data : aiResult.data;
+        setExtractedText(finalText);
+        
+        // Try to parse text as structured data
+        const parsedData = parseTextToData(finalText);
+        onTextExtracted(finalText, parsedData);
+        
+        setIsEnhancing(false);
+        setProgress(100);
+        
+        toast({
+          title: "AI OCR completed successfully",
+          description: `Enhanced ${finalText.length} characters using Hugging Face AI`
+        });
+        
+        setIsProcessing(false);
+        return;
+      }
+
+      // Fallback to Tesseract if AI fails
+      toast({
+        title: "Using backup OCR",
+        description: "AI analysis failed, using Tesseract OCR..."
+      });
+
       // Process with Tesseract - enhanced settings for accuracy and speed
       const { data: { text } } = await Tesseract.recognize(
         imageFile,
@@ -115,7 +158,11 @@ export const ImageOCR = ({ imageFile, onTextExtracted }: ImageOCRProps) => {
       );
 
       // Apply AI enhancement to the extracted text
-      const enhancedText = enhanceTextWithAI(text);
+      setIsEnhancing(true);
+      const enhancementResult = await huggingFaceService.enhanceOCRText(text, `Image file: ${imageFile.name}`);
+      const enhancedText = enhancementResult.success ? enhancementResult.data : enhanceTextWithAI(text);
+      setIsEnhancing(false);
+      
       setExtractedText(enhancedText);
 
       // Try to parse text as structured data
@@ -124,8 +171,8 @@ export const ImageOCR = ({ imageFile, onTextExtracted }: ImageOCRProps) => {
       onTextExtracted(enhancedText, parsedData);
 
       toast({
-        title: "OCR completed successfully",
-        description: `Extracted and enhanced ${enhancedText.length} characters from the image`
+        title: "OCR completed successfully", 
+        description: `Extracted and AI-enhanced ${enhancedText.length} characters from the image`
       });
 
     } catch (error) {
@@ -321,17 +368,17 @@ export const ImageOCR = ({ imageFile, onTextExtracted }: ImageOCRProps) => {
             <Button
               variant="analytics"
               onClick={processImage}
-              disabled={isProcessing}
+              disabled={isProcessing || isEnhancing}
             >
-              {isProcessing ? (
+              {isProcessing || isEnhancing ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  Processing ({progress}%)
+                  {isEnhancing ? 'AI Enhancing...' : `Processing (${progress}%)`}
                 </>
               ) : (
                 <>
                   <Eye className="h-4 w-4 mr-2" />
-                  Extract Text
+                  AI Extract Text
                 </>
               )}
             </Button>
@@ -359,7 +406,10 @@ export const ImageOCR = ({ imageFile, onTextExtracted }: ImageOCRProps) => {
         <Card className="glass-card p-4 sm:p-6 animate-fade-in">
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h4 className="font-semibold">Extracted Text</h4>
+              <h4 className="font-semibold flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-chart-primary" />
+                AI-Enhanced Text
+              </h4>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="sm">

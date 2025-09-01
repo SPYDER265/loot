@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import { saveAs } from 'file-saver';
+import { huggingFaceService } from '@/lib/huggingface';
 
 interface DataCleaningProps {
   data: any[];
@@ -36,6 +37,8 @@ export const DataCleaning = ({ data, onDataCleaned }: DataCleaningProps) => {
   const [cleaningStats, setCleaningStats] = useState<any>(null);
   const [detectedPatterns, setDetectedPatterns] = useState<any>({});
   const { toast } = useToast();
+  const [aiAnalysis, setAiAnalysis] = useState<any>(null);
+  const [isAIAnalyzing, setIsAIAnalyzing] = useState(false);
 
   // Enhanced pattern detection
   const detectDataPatterns = (data: any[]) => {
@@ -354,8 +357,49 @@ export const DataCleaning = ({ data, onDataCleaned }: DataCleaningProps) => {
 
   const analyzeDataQuality = () => {
     setIsAnalyzing(true);
+    setIsAIAnalyzing(true);
     
-    setTimeout(() => {
+    // Run AI analysis alongside traditional analysis
+    Promise.all([
+      // Traditional analysis
+      new Promise(resolve => {
+        setTimeout(() => {
+          const patterns = detectDataPatterns(data);
+          setDetectedPatterns(patterns);
+          
+          const stats = {
+            totalRows: data.length,
+            emptyRows: data.filter(row => Object.values(row).every(val => !val || String(val).trim() === '')).length,
+            duplicateRows: data.length - new Set(data.map(row => JSON.stringify(row))).size,
+            whitespaceIssues: data.reduce((count, row) => 
+              count + Object.values(row).filter(val => 
+                typeof val === 'string' && (val.startsWith(' ') || val.endsWith(' '))
+              ).length, 0
+            ),
+            missingValues: data.reduce((count, row) => 
+              count + Object.values(row).filter(val => val === null || val === undefined || val === '').length, 0
+            ),
+            patterns
+          };
+          
+          setCleaningStats(stats);
+          resolve(stats);
+        }, 1000);
+      }),
+      
+      // AI analysis
+      huggingFaceService.cleanAndStructureData(data, 'current_dataset', 'data')
+    ]).then(([traditionalStats, aiResult]) => {
+      if (aiResult.success) {
+        setAiAnalysis(aiResult.data);
+        toast({
+          title: "AI Analysis Complete",
+          description: "Hugging Face AI has analyzed your data quality and patterns"
+        });
+      }
+      setIsAIAnalyzing(false);
+      setIsAnalyzing(false);
+    }).catch(() => {
       const patterns = detectDataPatterns(data);
       setDetectedPatterns(patterns);
       
@@ -375,8 +419,9 @@ export const DataCleaning = ({ data, onDataCleaned }: DataCleaningProps) => {
       };
       
       setCleaningStats(stats);
+      setIsAIAnalyzing(false);
       setIsAnalyzing(false);
-    }, 1500);
+    });
   };
 
   const cleanData = () => {
@@ -698,15 +743,17 @@ export const DataCleaning = ({ data, onDataCleaned }: DataCleaningProps) => {
             <div className="text-center py-8">
               <Button 
                 onClick={analyzeDataQuality} 
-                disabled={isAnalyzing}
+                disabled={isAnalyzing || isAIAnalyzing}
                 className="bg-gradient-to-r from-chart-primary to-chart-secondary hover:opacity-90"
               >
-                {isAnalyzing ? 'Analyzing...' : 'Analyze Data Quality'}
+                {isAnalyzing || isAIAnalyzing ? 'AI Analyzing...' : 'AI Analyze Data Quality'}
               </Button>
-              {isAnalyzing && (
+              {(isAnalyzing || isAIAnalyzing) && (
                 <div className="mt-4 space-y-2">
-                  <Progress value={66} className="w-full" />
-                  <p className="text-sm text-muted-foreground">Scanning for data quality issues...</p>
+                  <Progress value={isAIAnalyzing ? 75 : 50} className="w-full" />
+                  <p className="text-sm text-muted-foreground">
+                    {isAIAnalyzing ? 'AI analyzing patterns and quality...' : 'Scanning for data quality issues...'}
+                  </p>
                 </div>
               )}
             </div>
@@ -732,6 +779,42 @@ export const DataCleaning = ({ data, onDataCleaned }: DataCleaningProps) => {
                   <div className="text-sm text-muted-foreground">Missing Values</div>
                 </div>
               </div>
+
+              {/* AI Analysis Results */}
+              {aiAnalysis && (
+                <>
+                  <Separator />
+                  <div>
+                    <h3 className="text-base sm:text-lg font-semibold mb-4 flex items-center gap-2">
+                      <Sparkles className="h-5 w-5 text-chart-primary" />
+                      AI Quality Analysis
+                    </h3>
+                    <div className="space-y-4">
+                      {aiAnalysis.quality_issues && aiAnalysis.quality_issues.length > 0 && (
+                        <div className="p-4 bg-gradient-to-br from-chart-warning/10 to-chart-warning/5 rounded-lg border border-chart-warning/20">
+                          <h4 className="font-medium text-chart-warning mb-2">🔍 AI-Detected Issues</h4>
+                          <ul className="text-sm text-muted-foreground space-y-1">
+                            {aiAnalysis.quality_issues.map((issue: string, index: number) => (
+                              <li key={index}>• {issue}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      
+                      {aiAnalysis.cleaning_recommendations && aiAnalysis.cleaning_recommendations.length > 0 && (
+                        <div className="p-4 bg-gradient-to-br from-chart-success/10 to-chart-success/5 rounded-lg border border-chart-success/20">
+                          <h4 className="font-medium text-chart-success mb-2">💡 AI Recommendations</h4>
+                          <ul className="text-sm text-muted-foreground space-y-1">
+                            {aiAnalysis.cleaning_recommendations.map((rec: string, index: number) => (
+                              <li key={index}>• {rec}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
 
               {/* Pattern Detection Results */}
               {(detectedPatterns.emails?.length > 0 || detectedPatterns.phones?.length > 0 || detectedPatterns.locations?.length > 0) && (
