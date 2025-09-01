@@ -38,10 +38,10 @@ const Landing = () => {
           <div className="max-w-4xl mx-auto text-center space-y-8">
             <div className="space-y-4">
               <h1 className="text-4xl md:text-6xl font-bold bg-gradient-to-r from-chart-primary to-chart-secondary bg-clip-text text-transparent">
-                AI-Powered Data Analytics
+                Hugging Face AI-Powered Analytics
               </h1>
               <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto">
-                Transform your raw data into actionable insights with our intelligent analytics platform
+                Transform your raw data into actionable insights with Hugging Face's advanced AI models
               </p>
             </div>
             
@@ -85,7 +85,7 @@ const Landing = () => {
               </div>
               <h3 className="text-xl font-semibold text-foreground mb-2">Smart Data Cleaning</h3>
               <p className="text-muted-foreground">
-                Automatically detect and fix data quality issues with AI-powered cleaning algorithms
+                Automatically detect and fix data quality issues with Hugging Face AI-powered cleaning algorithms
               </p>
             </div>
 
@@ -95,7 +95,7 @@ const Landing = () => {
               </div>
               <h3 className="text-xl font-semibold text-foreground mb-2">OCR Text Extraction</h3>
               <p className="text-muted-foreground">
-                Convert images and PDFs to analyzable text data with advanced OCR technology
+                Convert images and PDFs to analyzable text data with Hugging Face AI-enhanced OCR technology
               </p>
             </div>
 
@@ -115,7 +115,7 @@ const Landing = () => {
               </div>
               <h3 className="text-xl font-semibold text-foreground mb-2">AI Recommendations</h3>
               <p className="text-muted-foreground">
-                Get intelligent suggestions for data analysis approaches and visualization strategies
+                Get intelligent suggestions powered by Hugging Face AI for data analysis and visualization strategies
               </p>
             </div>
 

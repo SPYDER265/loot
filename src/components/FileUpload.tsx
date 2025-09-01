@@ -122,10 +122,10 @@ export const FileUpload = ({ onDataLoad, onImageLoad }: FileUploadProps) => {
     <div className="p-3 sm:p-8">
       <div className="text-center mb-8">
         <h2 className="text-2xl sm:text-3xl font-bold mb-4 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-          Upload Your Data
+          Upload Your Data for AI Analysis
         </h2>
         <p className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto px-2 sm:px-4">
-          Drag and drop your files or click to browse. We support multiple formats including CSV, Excel, JSON, and images for OCR analysis.
+          Drag and drop your files or click to browse. Powered by Hugging Face AI for intelligent analysis of CSV, Excel, JSON, and images with enhanced OCR.
         </p>
       </div>
       
@@ -153,12 +153,12 @@ export const FileUpload = ({ onDataLoad, onImageLoad }: FileUploadProps) => {
           
           <div className="space-y-4">
             <h3 className="text-xl sm:text-2xl font-semibold">
-              {dragActive ? 'Release to upload!' : 'Drop your data files here'}
+              {dragActive ? 'Release for AI analysis!' : 'Drop your data files for AI analysis'}
             </h3>
             <p className="text-muted-foreground text-sm sm:text-lg px-2">
               {dragActive 
-                ? 'Let go to start processing your file' 
-                : 'Support for CSV, Excel, JSON, and image files with OCR'
+                ? 'Let go to start AI processing your file' 
+                : 'Support for CSV, Excel, JSON, and image files with AI-enhanced OCR'
               }
             </p>
           </div>
@@ -174,7 +174,7 @@ export const FileUpload = ({ onDataLoad, onImageLoad }: FileUploadProps) => {
             </div>
             <div className="flex flex-col items-center gap-2 p-4 rounded-xl bg-gradient-to-br from-chart-secondary/10 to-chart-secondary/5 border border-chart-secondary/20">
               <Image className="h-8 w-8 text-chart-secondary" />
-              <span className="text-xs sm:text-sm font-medium">Images + OCR</span>
+              <span className="text-xs sm:text-sm font-medium">AI OCR</span>
             </div>
           </div>
           
@@ -189,7 +189,7 @@ export const FileUpload = ({ onDataLoad, onImageLoad }: FileUploadProps) => {
               {isProcessing ? (
                 <>
                   <div className="animate-spin mr-2 h-5 w-5 border-2 border-primary-foreground border-t-transparent rounded-full" />
-                  Processing...
+                  AI Processing...
                 </>
               ) : (
                 <>
@@ -200,7 +200,7 @@ export const FileUpload = ({ onDataLoad, onImageLoad }: FileUploadProps) => {
             </Button>
             <Button variant="glass" size="default" className="hover:scale-105 transition-transform w-full sm:w-auto h-11">
               <span className="mr-2">👁️</span>
-              View Samples
+              AI Samples
             </Button>
           </div>
           

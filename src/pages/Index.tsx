@@ -56,7 +56,7 @@ const Index = () => {
             DataMind AI Analytics
           </h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Upload your data, clean it with AI, and get intelligent insights
+            Upload your data, clean it with Hugging Face AI, and get intelligent insights
           </p>
         </div>
 
